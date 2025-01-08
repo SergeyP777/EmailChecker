@@ -1,6 +1,5 @@
 package com.email.verification.email.bot;
 
-
 import com.email.verification.email.services.DNSMXCheckerServes;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
