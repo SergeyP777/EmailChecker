@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 @Service
-public class DNSMXCheckerService {
+public class EmailService {
     private static final String EMAIL_REGEX = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
 
 
@@ -47,7 +47,7 @@ public class DNSMXCheckerService {
         return mxRecords;
     }
 
-    public String checkEmailOnExists(String email) {
+    public String getInfoAboutEmail(String email) {
         String domain = email.substring(email.indexOf("@") + 1);
         List<String> mxRecords = getMXRecords(domain);
         for (String mxRecord : mxRecords) {

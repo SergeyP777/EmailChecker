@@ -8,16 +8,16 @@ class CorrectionDomainServiceTest {
 
     @Test
     void checkCorrectionDomainNamesTest() {
-        DNSMXCheckerService dnsmxCheckerService = new DNSMXCheckerService();
-        assertEquals(0, dnsmxCheckerService.rateDifferentDomainNames(
+        EmailService emailService = new EmailService();
+        assertEquals(0, emailService.rateDifferentDomainNames(
                 "gmail.com",
                 "gmail.com"));
     }
 
     @Test
     void checkIncorrectionDomainNamesTest() {
-        DNSMXCheckerService dnsmxCheckerService = new DNSMXCheckerService();
-        assertEquals(1, dnsmxCheckerService.rateDifferentDomainNames(
+        EmailService emailService = new EmailService();
+        assertEquals(1, emailService.rateDifferentDomainNames(
                 "gaail.com",
                 "gmail.com"));
     }
