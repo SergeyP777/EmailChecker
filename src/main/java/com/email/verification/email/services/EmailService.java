@@ -3,18 +3,19 @@ package com.email.verification.email.services;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ResourceUtils;
 import org.xbill.DNS.Lookup;
 import org.xbill.DNS.MXRecord;
 import org.xbill.DNS.Type;
 import org.xbill.DNS.Record;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @Service
 public class DNSMXCheckerService {
@@ -61,7 +62,7 @@ public class DNSMXCheckerService {
                 String response = sendCommand(writer, reader, "RCPT TO:<" + email + ">");
 
                 if (response.startsWith("250")) {
-                    return "Email " + email + " exist.";
+                    return "Email " + email + " exists.";
                 }
             } catch (Exception e) {
                 System.err.println("Error when checking through " + mxRecord + ": " + e.getMessage());
@@ -103,6 +104,39 @@ public class DNSMXCheckerService {
         }
 
         return dp[len1][len2];
+    }
+
+    public List<String> getPossibleEmails(String emailInput) throws FileNotFoundException {
+        File file = ResourceUtils.getFile("classpath:must_popular_email_domains");
+
+        try (Stream<String> streamOfDomains = Files.lines(file.toPath())) {
+            List<String> domains = streamOfDomains.toList();
+            String extractDomain = extractDomain(emailInput);
+            String extractName = extractName(emailInput);
+            if (domains.contains(extractDomain)) {
+                return List.of();
+            }
+
+            return domains.stream()
+                    .filter(emailDomain -> rateDifferentDomainNames(extractDomain, emailDomain) == 1)
+                    .map(emailDomain -> extractName + "@" + emailDomain)
+                    .toList();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public boolean isDisposable(String emailInput) throws FileNotFoundException {
+        File file = ResourceUtils.getFile("classpath:disposable_email.txt");
+
+        try (Stream<String> streamOfDisposableDomains = Files.lines(file.toPath())) {
+            List<String> disposableDomainsList = streamOfDisposableDomains.toList();
+            String extractDomain = extractDomain(emailInput);
+
+            return disposableDomainsList.stream().anyMatch(it -> it.equals(extractDomain));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public String extractDomain(@NotNull String email) {
