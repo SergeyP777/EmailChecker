@@ -28,10 +28,10 @@ dependencies {
 	compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.34'
 	// https://mvnrepository.com/artifact/dnsjava/dnsjava
 	implementation group: 'dnsjava', name: 'dnsjava', version: '3.6.1'
-
-
-
-
+	compileOnly("org.projectlombok:lombok:1.18.38")
+	annotationProcessor("org.projectlombok:lombok:1.18.38")
+	testCompileOnly("org.projectlombok:lombok:1.18.38")
+	testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
 }
 
 tasks.named('test') {

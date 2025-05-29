@@ -35,7 +35,7 @@ public class EmailService {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error in search MX-records: " + e.getMessage());
+            System.err.println("Error in search MX-records: " + e.getMessage()); //TODO: rework with a exceptional
         }
 
         if (!mxRecords.isEmpty()) {
