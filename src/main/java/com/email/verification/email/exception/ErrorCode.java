@@ -1,10 +1,11 @@
 package com.email.verification.email.exception;
 
-import lombok.Getter;
-
-@Getter
 public enum ErrorCode {
     MX_RECORDS_NOT_FOUND("Mx records not found.");
+
+    public String getMessage() {
+        return message;
+    }
 
     private final String message;
 
