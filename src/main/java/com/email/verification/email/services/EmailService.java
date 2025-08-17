@@ -1,5 +1,6 @@
 package com.email.verification.email.services;
 
+import com.email.verification.email.exception.EmailException;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
@@ -12,15 +13,20 @@ import org.xbill.DNS.Record;
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 @Service
 public class EmailService {
     private static final String EMAIL_REGEX = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
-
+    private static final String WHOIS_CREATE_DATE_INFO = "   Creation Date: ";
+    private static final String TEMP_MAIL_ORG_DETECT = "http://www.namesilo.com";
 
     public List<String> getMXRecords(String domain) {
         List<String> mxRecords = new ArrayList<>();
@@ -133,10 +139,51 @@ public class EmailService {
             List<String> disposableDomainsList = streamOfDisposableDomains.toList();
             String extractDomain = extractDomain(emailInput);
 
-            return disposableDomainsList.stream().anyMatch(it -> it.equals(extractDomain));
+            return disposableDomainsList.stream().anyMatch(it -> it.equals(extractDomain))
+                    || isLikelyDisposable(extractDomain);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private boolean isLikelyDisposable(String domain) {
+        int score = 0;
+        if (domain.matches(".*\\d.*")) score += 3;
+        try {
+            String command = "whois " + domain;
+            Runtime rt = Runtime.getRuntime();
+            Process process = rt.exec(command);
+            BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String whoisInfo;
+            LocalDateTime domainCreated;
+            while ((whoisInfo = stdInput.readLine()) != null) {
+                if (whoisInfo.contains(WHOIS_CREATE_DATE_INFO)) {
+                    Instant instant = Instant.parse(whoisInfo.substring(WHOIS_CREATE_DATE_INFO.length()));
+                    domainCreated = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+                    if (calculateEntropy(domain) > 3.8) score += 2;
+                    if (Duration.between(LocalDateTime.now(), domainCreated).toDays() < 355) score += 4;
+                    break;
+                }
+                if (whoisInfo.contains(TEMP_MAIL_ORG_DETECT)) score += 10;
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return score >= 8;
+    }
+
+    private double calculateEntropy(String domain) {
+        Map<Character, Integer> characterCount = new HashMap<>();
+        for (char c : domain.toCharArray()) {
+            characterCount.put(c, characterCount.getOrDefault(c, 0) + 1);
+        }
+        double entropy = 0.0;
+        int len = domain.length();
+        for (int count : characterCount.values()) {
+            double p = (double) count / len;
+            entropy -= p * (Math.log(p) / Math.log(2));
+        }
+        return entropy;
     }
 
     public String extractDomain(@NotNull String email) {
