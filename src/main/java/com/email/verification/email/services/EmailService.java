@@ -1,8 +1,9 @@
 package com.email.verification.email.services;
 
-import com.email.verification.email.exception.EmailException;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
 import org.xbill.DNS.Lookup;
@@ -17,7 +18,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -112,13 +112,17 @@ public class EmailService {
         return dp[len1][len2];
     }
 
-    public List<String> getPossibleEmails(String emailInput) throws FileNotFoundException {
-        File file = ResourceUtils.getFile("classpath:must_popular_email_domains");
+    public List<String> getPossibleEmails(String emailInput) {
+        Resource resource = new ClassPathResource("must_popular_email_domains");
 
-        try (Stream<String> streamOfDomains = Files.lines(file.toPath())) {
+        try (InputStream inputStream = resource.getInputStream();
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+             Stream<String> streamOfDomains = reader.lines()) {
+
             List<String> domains = streamOfDomains.toList();
             String extractDomain = extractDomain(emailInput);
             String extractName = extractName(emailInput);
+
             if (domains.contains(extractDomain)) {
                 return List.of();
             }
@@ -127,8 +131,9 @@ public class EmailService {
                     .filter(emailDomain -> rateDifferentDomainNames(extractDomain, emailDomain) == 1)
                     .map(emailDomain -> extractName + "@" + emailDomain)
                     .toList();
+
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Problem read file must_popular_email_domains", e);
         }
     }
 
