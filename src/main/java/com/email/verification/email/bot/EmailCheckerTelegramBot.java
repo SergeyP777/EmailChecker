@@ -2,7 +2,6 @@ package com.email.verification.email.bot;
 
 import com.email.verification.email.services.EmailService;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
@@ -16,14 +15,17 @@ import java.io.FileNotFoundException;
 import java.util.List;
 
 @Component
-public class EmailCheckerBot implements LongPollingSingleThreadUpdateConsumer {
+public class EmailCheckerTelegramBot implements LongPollingSingleThreadUpdateConsumer {
     @Value("${welcome.message}")
     String welcomeMessage;
     @Value("${bot.token}")
     String token;
     TelegramClient telegramClient;
-    @Autowired
-    EmailService emailService;
+    private final EmailService emailService;
+
+    public EmailCheckerTelegramBot() {
+        emailService = new EmailService();
+    }
 
     @Override
     public void consume(Update update) {

@@ -1,6 +1,6 @@
 package com.email.verification.email.config;
 
-import com.email.verification.email.bot.EmailCheckerBot;
+import com.email.verification.email.bot.EmailCheckerTelegramBot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -14,7 +14,7 @@ public class EmailCheckerBotInitializer {
     @Value("${bot.token}")
     String token;
     @Autowired
-    EmailCheckerBot bot;
+    EmailCheckerTelegramBot bot;
 
     @EventListener({ContextRefreshedEvent.class})
     public void init() throws TelegramApiException {
