@@ -22,6 +22,6 @@ spring:
     enabled: true
 
   bot:
-    token: 8062797284:AAH3cWl6fM_G4RifZOAopNf8VoawQFf4cT8
+    token:
   welcome:
     message: Hi!Welcome to chat bot which define email on exist.
