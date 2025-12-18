@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      dockerfile: Dockerfile
+    container_name: email_check_service
+    ports:
+      - "8087:8087"
+    depends_on:
+      - postgres
+      - redis
+    dns:
+      - 8.8.8.8
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/email_info
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - BOT_TOKEN=8062797284:AAH3cWl6fM_G4RifZOAopNf8VoawQFf4cT8
+    networks:
+      - internal_network
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_DB: email_info
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - internal_network
+
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - internal_network
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight
+    restart: always
+    depends_on:
+      - redis
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis-insight:/data
+    networks:
+      - internal_network
+
+volumes:
+  redis-insight:
+  pgdata:
+
+networks:
+  internal_network:
+    driver: bridge

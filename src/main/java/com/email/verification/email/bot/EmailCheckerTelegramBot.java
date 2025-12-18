@@ -1,5 +1,6 @@
 package com.email.verification.email.bot;
 
+import com.email.verification.email.dto.EmailInfoDto;
 import com.email.verification.email.services.EmailService;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +34,7 @@ public class EmailCheckerTelegramBot implements LongPollingSingleThreadUpdateCon
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
             List<String> possibleEmails;
-            String infoAboutEmail;
+            EmailInfoDto emailInfoDto;
 
             switch (messageText) {
                 case "/start":
@@ -44,34 +45,19 @@ public class EmailCheckerTelegramBot implements LongPollingSingleThreadUpdateCon
                         sendMessage(chatId, "Your email is not correct.Pleas try again.");
                         break;
                     }
-                    try {
-                        possibleEmails = emailService.getPossibleEmails(messageText);
-                        if (!possibleEmails.isEmpty()) {
-                            possibleEmails.forEach(email -> sendMessage(chatId, "Maybe are you assume? " + email));
-                            if (update.hasMessage() && update.getMessage().hasText() && possibleEmails.contains(update.getMessage().getText())) {
-                                infoAboutEmail = emailService.getInfoAboutEmail(messageText);
-                                sendMessage(chatId, infoAboutEmail);
-                                if (infoAboutEmail.contains("exists.") && emailService.isDisposable(messageText)) {
-                                    sendMessage(chatId, "WARNING: email is disposable!");
-                                }
-                                break;
-                            }
-                        }
 
-
-                    } catch (FileNotFoundException e) {
-                        throw new RuntimeException(e);
+                    possibleEmails = emailService.getPossibleEmails(messageText);
+                    if (!possibleEmails.isEmpty()) {
+                        possibleEmails.forEach(email -> sendMessage(chatId, "Maybe are you assume? " + email));
                     }
 
-                    infoAboutEmail = emailService.getInfoAboutEmail(messageText);
-                    sendMessage(chatId, infoAboutEmail);
-                    try {
-                        if (infoAboutEmail.contains("exists.") && emailService.isDisposable(messageText)) {
-                            sendMessage(chatId, "WARNING: email is disposable!");
-                        }
-                    } catch (FileNotFoundException e) {
-                        throw new RuntimeException(e);
+                    emailInfoDto = emailService.getInfoAboutEmail(messageText);
+                    sendMessage(chatId, emailInfoDto.getEmail() + " exists.");
+                    if (emailInfoDto.isExists() && emailInfoDto.isDisposable()) {
+                        sendMessage(chatId, "WARNING: email is disposable!");
                     }
+                    break;
+
                 }
             }
         }

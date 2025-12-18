@@ -1,19 +1,21 @@
 package com.email.verification.email.services;
 
+import com.email.verification.email.dto.EmailInfoDto;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
 import org.xbill.DNS.Lookup;
 import org.xbill.DNS.MXRecord;
 import org.xbill.DNS.Type;
 import org.xbill.DNS.Record;
 
+import javax.crypto.spec.PSource;
 import java.io.*;
 import java.net.Socket;
-import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -53,9 +55,13 @@ public class EmailService {
         return mxRecords;
     }
 
-    public String getInfoAboutEmail(String email) {
+    public EmailInfoDto getInfoAboutEmail(String email) {
         String domain = email.substring(email.indexOf("@") + 1);
         List<String> mxRecords = getMXRecords(domain);
+        EmailInfoDto emailInfoDto = new EmailInfoDto();
+        emailInfoDto.setEmail(email);
+        emailInfoDto.setDisposable(isDisposable(email) || isLikelyDisposable(domain));
+        System.out.println(isLikelyDisposable(domain));
         for (String mxRecord : mxRecords) {
             try (Socket socket = new Socket(mxRecord, 25);
                  BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -68,14 +74,15 @@ public class EmailService {
                 String response = sendCommand(writer, reader, "RCPT TO:<" + email + ">");
 
                 if (response.startsWith("250")) {
-                    return "Email " + email + " exists.";
+                    emailInfoDto.setExists(true);
                 }
+
             } catch (Exception e) {
                 System.err.println("Error when checking through " + mxRecord + ": " + e.getMessage());
             }
         }
 
-        return "Email " + email + " not found.";
+        return emailInfoDto;
     }
 
     private String sendCommand(OutputStream writer, BufferedReader reader, String command) throws Exception {
@@ -112,7 +119,7 @@ public class EmailService {
         return dp[len1][len2];
     }
 
-    public List<String> getPossibleEmails(String emailInput) {
+    public List getPossibleEmails(String emailInput) {
         Resource resource = new ClassPathResource("must_popular_email_domains");
 
         try (InputStream inputStream = resource.getInputStream();
@@ -124,7 +131,7 @@ public class EmailService {
             String extractName = extractName(emailInput);
 
             if (domains.contains(extractDomain)) {
-                return List.of();
+                return Collections.EMPTY_LIST;
             }
 
             return domains.stream()
@@ -137,20 +144,23 @@ public class EmailService {
         }
     }
 
-    public boolean isDisposable(String emailInput) throws FileNotFoundException {
-        File file = ResourceUtils.getFile("classpath:disposable_email.txt");
+    public boolean isDisposable(String emailInput) {
+        Resource resource = new ClassPathResource("disposable_email.txt");
 
-        try (Stream<String> streamOfDisposableDomains = Files.lines(file.toPath())) {
-            List<String> disposableDomainsList = streamOfDisposableDomains.toList();
-            String extractDomain = extractDomain(emailInput);
+        try (InputStream inputStream = resource.getInputStream();
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
 
-            return disposableDomainsList.stream().anyMatch(it -> it.equals(extractDomain))
-                    || isLikelyDisposable(extractDomain);
+            List<String> disposableDomains = reader.lines().toList();
+            String emailDomain = extractDomain(emailInput);
+
+            return disposableDomains.contains(emailDomain);
+
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Problem reading file disposable_email.txt", e);
         }
     }
 
+    @Async
     private boolean isLikelyDisposable(String domain) {
         int score = 0;
         if (domain.matches(".*\\d.*")) score += 3;
@@ -163,6 +173,7 @@ public class EmailService {
             LocalDateTime domainCreated;
             while ((whoisInfo = stdInput.readLine()) != null) {
                 if (whoisInfo.contains(WHOIS_CREATE_DATE_INFO)) {
+                    System.out.println("123" + whoisInfo);
                     Instant instant = Instant.parse(whoisInfo.substring(WHOIS_CREATE_DATE_INFO.length()));
                     domainCreated = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
                     if (calculateEntropy(domain) > 3.8) score += 2;
